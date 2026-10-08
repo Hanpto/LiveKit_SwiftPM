@@ -52,8 +52,16 @@ private class LiveBundleToken {}
 
 public extension Bundle {
     static var liveBundle: Bundle {
+        // SPM 下不能走 BundleLoader：moduleBundle 的 SWIFT_PACKAGE 分支返回的是
+        // 它所在 target（AtomicX）的 Bundle.module——LiveKit 作为第二个 SPM 包
+        // 调它时，拿到的资源包是错的，图片和多语言全部 miss（表现为文案回退成
+        // key）。这里必须用 LiveKit 自己的 Bundle.module。
+        #if SWIFT_PACKAGE
+        return Bundle.module
+        #else
         return BundleLoader.moduleBundle(named: "TUILiveKitBundle",
                                          moduleName: "TUILiveKit",
                                          for: LiveBundleToken.self) ?? .main
+        #endif
     }
 }
