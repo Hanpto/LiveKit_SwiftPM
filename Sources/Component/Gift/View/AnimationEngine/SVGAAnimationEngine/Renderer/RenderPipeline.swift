@@ -84,10 +84,10 @@ public final class SVGARenderPipeline {
     // MARK: - Shader Library
     
     private func loadShaderLibrary() throws {
-        // Method 0: 模块资源 bundle——CocoaPods 下是 TUILiveKitBundle，SPM 下是
-        // Bundle.module（BundleLoader 内按 #if SWIFT_PACKAGE 区分）。放最前面：
-        // SwiftPM 不编译 .metal，包里不会有 default.metallib，只能靠运行时编译
-        // 源码；而 SPM 的资源又不在 main bundle 里，下面 Method 2/3 会全 miss。
+        // Method 0: module resource bundle (CocoaPods: TUILiveKitBundle, SPM:
+        // Bundle.module). Checked first because a precompiled default.metallib
+        // ships with the SPM resource bundle; those resources are not in the
+        // main bundle, so Method 2 / Method 3 below miss them.
         if let libraryURL = Bundle.liveBundle.url(forResource: "default", withExtension: "metallib") {
             do {
                 self.library = try device.makeLibrary(URL: libraryURL)
@@ -143,8 +143,9 @@ public final class SVGARenderPipeline {
     
     /// Load shader source from bundle
     private func loadShaderSource() -> String? {
-        // 先找模块资源 bundle：CocoaPods 下是 TUILiveKitBundle，SPM 下是
-        // Bundle.module。SPM 的资源不在 main bundle 里，下面三条兜底会全 miss。
+        // Module resource bundle first (CocoaPods: TUILiveKitBundle, SPM:
+        // Bundle.module). SPM resources are not in the main bundle, so the
+        // fallbacks below miss them.
         if let shaderURL = Bundle.liveBundle.url(forResource: "Shaders", withExtension: "metal") {
             return try? String(contentsOf: shaderURL, encoding: .utf8)
         }
