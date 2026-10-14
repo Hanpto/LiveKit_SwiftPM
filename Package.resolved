@@ -1,0 +1,78 @@
+{
+  "originHash" : "bd0757781c176355a4ded5dbe93f27902185151a0dbbad0ae793bec5a340339f",
+  "pins" : [
+    {
+      "identity" : "atomicxcore52_swiftpm",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Hanpto/AtomicXCore52_SwiftPM.git",
+      "state" : {
+        "revision" : "045304047e6dcba5159ccbbc93a1f051426ef0d0",
+        "version" : "5.2.0"
+      }
+    },
+    {
+      "identity" : "chat_sdk_swiftpm",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Tencent-RTC/Chat_SDK_SwiftPM.git",
+      "state" : {
+        "revision" : "8d24207d49b9227a5da75d485f0efdfbe382eba9",
+        "version" : "9.0.7652"
+      }
+    },
+    {
+      "identity" : "kingfisher",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/onevcat/Kingfisher.git",
+      "state" : {
+        "revision" : "2ef543ee21d63734e1c004ad6c870255e8716c50",
+        "version" : "7.12.0"
+      }
+    },
+    {
+      "identity" : "professional_swiftpm",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Tencent-RTC/Professional_SwiftPM.git",
+      "state" : {
+        "revision" : "2f64eab272da5479cbb360546a39f03ab5e855e3",
+        "version" : "13.3.20845"
+      }
+    },
+    {
+      "identity" : "snapkit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/SnapKit/SnapKit.git",
+      "state" : {
+        "revision" : "2842e6e84e82eb9a8dac0100ca90d9444b0307f4",
+        "version" : "5.7.1"
+      }
+    },
+    {
+      "identity" : "svgaplayer_swiftpm",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Hanpto/SVGAPlayer_SwiftPM.git",
+      "state" : {
+        "revision" : "5ec623b4e0e9f283a82e11d15b2018c898998589",
+        "version" : "2.5.8"
+      }
+    },
+    {
+      "identity" : "tceffectplayer_swiftpm",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Hanpto/TCEffectPlayer_SwiftPM.git",
+      "state" : {
+        "revision" : "f2cd502d15ec3678f669ae93fe47fd7a62e43e97",
+        "version" : "3.3.257"
+      }
+    },
+    {
+      "identity" : "tcmediax_swiftpm",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Hanpto/TCMediaX_SwiftPM.git",
+      "state" : {
+        "revision" : "4981089a79c2a8beed5be1bab2a5dc482784e92c",
+        "version" : "3.3.257"
+      }
+    }
+  ],
+  "version" : 3
+}

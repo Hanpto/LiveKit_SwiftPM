@@ -3,35 +3,35 @@ import PackageDescription
 
 let package = Package(
     name: "TUILiveKit",
+    defaultLocalization: "en",
     platforms: [.iOS(.v14)],
     products: [
         .library(name: "TUILiveKit", targets: ["TUILiveKit"])
     ],
     dependencies: [
-        .package(url: "https://github.com/Hanpto/AtomicX_SwiftPM.git", from: "4.2.2"),
-        .package(url: "https://github.com/Tencent-RTC/AtomicXCore_SwiftPM.git", from: "4.3.0"),
-        .package(url: "https://github.com/Tencent-RTC/RTCRoomEngine_SwiftPM.git", from: "4.3.0"),
-        .package(url: "https://github.com/Hanpto/TUICore_SwiftPM.git", from: "9.0.7652"),
+        .package(url: "https://github.com/Hanpto/AtomicXCoreAtomic_SwiftPM.git", from: "5.2.1"),
         .package(url: "https://github.com/Tencent-RTC/Chat_SDK_SwiftPM.git", from: "9.0.7652"),
+        .package(url: "https://github.com/Tencent-RTC/Professional_SwiftPM.git", from: "13.3.20845"),
+        .package(url: "https://github.com/Hanpto/TCEffectPlayer_SwiftPM.git", from: "3.3.257"),
         .package(url: "https://github.com/SnapKit/SnapKit.git", from: "5.7.1"),
         .package(url: "https://github.com/onevcat/Kingfisher.git", from: "7.12.0"),
-        .package(url: "https://github.com/CoderMJLee/MJRefresh.git", from: "3.7.9")
+        .package(url: "https://github.com/Hanpto/SVGAPlayer_SwiftPM.git", from: "2.5.8")
     ],
     targets: [
         .target(
             name: "TUILiveKit",
             dependencies: [
-                .product(name: "AtomicX", package: "AtomicX_SwiftPM"),
-                .product(name: "AtomicXCore", package: "AtomicXCore_SwiftPM"),
-                .product(name: "RoomEngine", package: "RTCRoomEngine_SwiftPM"),
-                .product(name: "TUICore_SwiftPM", package: "TUICore_SwiftPM"),
+                .product(name: "AtomicXCore", package: "AtomicXCoreAtomic_SwiftPM"),
                 .product(name: "Chat_SDK_SwiftPM", package: "Chat_SDK_SwiftPM"),
+                .product(name: "Professional_SwiftPM", package: "Professional_SwiftPM"),
+                .product(name: "TCEffectPlayer", package: "TCEffectPlayer_SwiftPM"),
                 .product(name: "SnapKit", package: "SnapKit"),
                 .product(name: "Kingfisher", package: "Kingfisher"),
-                .product(name: "MJRefresh", package: "MJRefresh")
+                .product(name: "SVGAPlayer", package: "SVGAPlayer_SwiftPM")
             ],
             path: "Sources",
-            resources: [.process("Resources")]
+            exclude: ["TUILiveKit.podspec", "README.md"],
+            resources: [.process("Resources/Assets.xcassets"), .process("Resources/en.lproj"), .process("Resources/zh-Hans.lproj"), .process("Resources/livekit_coguest_wave.gif")]
         )
     ],
     swiftLanguageModes: [.v5]
