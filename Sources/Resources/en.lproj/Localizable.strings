@@ -242,7 +242,7 @@
 "tuilivekit.pusher.status.video.normal.detail" = "The live video is smooth";
 "tuilivekit.pusher.status.video.off.detail" = "The camera is off or permission was not granted";
 "tuilivekit.pusher.status.video.device_error.detail" = "Check camera permission or whether another app is using it";
-"tuilivekit.pusher.status.video.stream_error.detail" = "Frame rate, bitrate, or network status is abnormal";
+"tuilivekit.pusher.status.video.stream_error.detail" = "Frame rate or network status is abnormal";
 "tuilivekit.pusher.status.audio.normal.title" = "Audio is normal";
 "tuilivekit.pusher.status.audio.off.title" = "Audio is off";
 "tuilivekit.pusher.status.audio.error.title" = "Audio issue detected";
@@ -309,6 +309,9 @@
 "tuilivekit.player.coguest.microphone_unlocked" = "The host has unlocked your microphone";
 
 "tuilivekit.pusher.error.start_failed" = "Unable to start streaming";
+"tuilivekit.pusher.error.content_rejected" = "Live information did not pass review. Please edit it and try again.";
+"tuilivekit.pusher.error.update_failed" = "Unable to update live information. Please try again later.";
+"tuilivekit.pusher.error.operation_failed" = "Operation failed. Please try again later.";
 
 "tuilivekit.pusher.interruption.ended" = "Live ended";
 

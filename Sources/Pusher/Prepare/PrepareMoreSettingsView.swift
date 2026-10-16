@@ -6,13 +6,11 @@ final class PrepareMoreSettingsView: BottomSheetView {
 
     private enum Page {
         case main
-        case videoQuality
         case audioEffect
 
         var title: String {
             switch self {
             case .main: return LiveKitResources.localizedString("tuilivekit.pusher.settings.more")
-            case .videoQuality: return LiveKitResources.localizedString("tuilivekit.pusher.video_quality")
             case .audioEffect: return LiveKitResources.localizedString("tuilivekit.pusher.audio_effects")
             }
         }
@@ -20,17 +18,12 @@ final class PrepareMoreSettingsView: BottomSheetView {
         var sheetHeight: CGFloat {
             switch self {
             case .main: return 191
-            case .videoQuality: return 280
             case .audioEffect: return 466
             }
         }
     }
 
     private let mainContentView = UIView()
-    private let qualityItem = PusherSettingsItemView(
-        title: LiveKitResources.localizedString("tuilivekit.pusher.quality.hd"),
-        assetName: "livekit_settings_quality"
-    )
     private let mirrorItem = PusherSettingsItemView(
         title: LiveKitResources.localizedString("tuilivekit.pusher.mirror"),
         assetName: "livekit_settings_mirror"
@@ -39,7 +32,6 @@ final class PrepareMoreSettingsView: BottomSheetView {
         title: LiveKitResources.localizedString("tuilivekit.pusher.audio_effects"),
         assetName: "livekit_settings_audio_effect"
     )
-    private let videoQualityPicker = VideoQualityPickerView()
     private let audioEffectView = AudioEffectView()
     private var settings = PusherSettingsState()
     private var page: Page = .main
@@ -53,11 +45,9 @@ final class PrepareMoreSettingsView: BottomSheetView {
 
     func bind(_ settings: PusherSettingsState) {
         self.settings = settings
-        qualityItem.setTitle(settings.videoQuality.title)
         mirrorItem.setIcon(assetName: settings.isMirrorEnabled
             ? "livekit_settings_mirror_on"
             : "livekit_settings_mirror_off")
-        videoQualityPicker.bind(settings.videoQuality)
         audioEffectView.bindCaptureVolume(settings.captureVolume)
     }
 
@@ -82,20 +72,13 @@ final class PrepareMoreSettingsView: BottomSheetView {
     private func configureUI() {
         contentView.addSubview(mainContentView)
 
-        let mainStack = UIStackView(arrangedSubviews: [qualityItem, mirrorItem, audioEffectItem])
+        let mainStack = UIStackView(arrangedSubviews: [mirrorItem, audioEffectItem])
         mainStack.axis = .horizontal
         mainStack.distribution = .fillEqually
         mainContentView.addSubview(mainStack)
 
-        qualityItem.addTarget(self, action: #selector(showVideoQuality), for: .touchUpInside)
         mirrorItem.addTarget(self, action: #selector(toggleMirror), for: .touchUpInside)
         audioEffectItem.addTarget(self, action: #selector(showAudioEffect), for: .touchUpInside)
-
-        videoQualityPicker.onSelect = { [weak self] quality in
-            self?.actionHandler?.updateVideoQuality(quality)
-            self?.dismiss()
-        }
-        contentView.addSubview(videoQualityPicker)
 
         audioEffectView.onSetCaptureVolume = { [weak self] volume in
             self?.actionHandler?.setCaptureVolume(volume)
@@ -110,11 +93,6 @@ final class PrepareMoreSettingsView: BottomSheetView {
         mainStack.snp.makeConstraints { make in
             make.edges.equalToSuperview()
         }
-        videoQualityPicker.snp.makeConstraints { make in
-            make.leading.trailing.equalToSuperview().inset(16)
-            make.top.equalToSuperview().offset(67)
-            make.height.equalTo(160)
-        }
         audioEffectView.snp.makeConstraints { make in
             make.leading.trailing.equalToSuperview().inset(16)
             make.top.equalToSuperview().offset(60)
@@ -128,15 +106,9 @@ final class PrepareMoreSettingsView: BottomSheetView {
         self.page = page
         sheetTitle = page.title
         mainContentView.isHidden = page != .main
-        videoQualityPicker.isHidden = page != .videoQuality
         audioEffectView.isHidden = page != .audioEffect
         audioEffectView.setActive(page == .audioEffect && !isHidden)
         updateSheetHeight(animated: animated)
-    }
-
-    @objc private func showVideoQuality() {
-        videoQualityPicker.bind(settings.videoQuality)
-        showPage(.videoQuality, animated: true)
     }
 
     @objc private func toggleMirror() {

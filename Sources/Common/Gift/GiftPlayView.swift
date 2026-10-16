@@ -13,7 +13,6 @@ final class GiftPlayView: UIView {
         static let channelSpacing: CGFloat = 4
         static let toolbarAndMessageOffset: CGFloat = 86
         static let welcomeReservedHeight: CGFloat = 32
-        static let localGiftReservationLifetime: TimeInterval = 10
     }
 
     private struct LocalGiftReservation {
@@ -22,7 +21,6 @@ final class GiftPlayView: UIView {
         let gift: LiveGiftEvent
         var remainingCount: UInt
         var isDisplayed: Bool
-        var expiration: DispatchWorkItem?
     }
 
     private let entryView = LiveGiftEntryView()
@@ -37,6 +35,7 @@ final class GiftPlayView: UIView {
     private var activatedLiveID: String?
     private var activationID = UUID()
     private var isSuspended = false
+    private var isActive = true
     private var giftPanelHeightAboveSafeArea: CGFloat?
     private var localGiftReservations: [LocalGiftReservation] = []
 
@@ -61,8 +60,8 @@ final class GiftPlayView: UIView {
         NotificationCenter.default.removeObserver(self)
     }
 
-    /// Subscriptions follow the view's own presence in the hierarchy, so hosts
-    /// never have to drive the gift loop by hand.
+    /// Window presence owns subscriptions; a retained, hidden stage can also
+    /// deactivate its gift presentation without removing the view hierarchy.
     override func didMoveToWindow() {
         super.didMoveToWindow()
         if window == nil {
@@ -72,14 +71,25 @@ final class GiftPlayView: UIView {
         }
     }
 
+    func setActive(_ active: Bool) {
+        isActive = active
+        if active, window != nil {
+            activate()
+        } else {
+            deactivate()
+        }
+    }
+
     /// Suppresses rendering while the live is paused. Late events arriving in
     /// this window are dropped instead of being replayed afterwards.
     func setSuspended(_ isSuspended: Bool) {
+        guard self.isSuspended != isSuspended else { return }
         self.isSuspended = isSuspended
+        effectView.setSuspended(isSuspended)
     }
 
     func show(_ gift: LiveGiftEvent) {
-        guard !isSuspended else { return }
+        guard isActive, !isSuspended else { return }
         entryView.enqueue(gift)
         if gift.isAdvanced {
             effectView.enqueue(resourceURL: gift.resourceURL)
@@ -88,24 +98,18 @@ final class GiftPlayView: UIView {
 
     @discardableResult
     func reserveLocalGift(_ gift: LiveGiftEvent) -> UUID? {
-        guard !isSuspended, gift.count > 0 else { return nil }
-        let id = UUID()
-        let expiration = DispatchWorkItem { [weak self] in
-            self?.removeLocalGiftReservation(id: id)
+        guard isActive, !isSuspended, gift.count > 0 else {
+            return nil
         }
+        let id = UUID()
         localGiftReservations.append(
             LocalGiftReservation(
                 id: id,
                 comboKey: gift.comboKey,
                 gift: gift,
                 remainingCount: gift.count,
-                isDisplayed: false,
-                expiration: expiration
+                isDisplayed: false
             )
-        )
-        DispatchQueue.main.asyncAfter(
-            deadline: .now() + Constants.localGiftReservationLifetime,
-            execute: expiration
         )
         return id
     }
@@ -114,7 +118,9 @@ final class GiftPlayView: UIView {
         guard let index = localGiftReservations.firstIndex(where: { $0.id == id }),
               !localGiftReservations[index].isDisplayed,
               localGiftReservations[index].remainingCount > 0
-        else { return }
+        else {
+            return
+        }
         localGiftReservations[index].isDisplayed = true
         show(Self.copy(localGiftReservations[index].gift, count: localGiftReservations[index].remainingCount))
     }
@@ -144,15 +150,18 @@ final class GiftPlayView: UIView {
         updateEntryBottomConstraint()
     }
 
-    func preloadEffects(resourceURLs: [String]) {
-        effectView.preload(resourceURLs: resourceURLs)
+    func resetEntries() {
+        entryView.reset()
     }
 
-    func reset() {
-        localGiftReservations.forEach { $0.expiration?.cancel() }
-        localGiftReservations.removeAll()
-        entryView.reset()
+    func resetPresentation() {
+        resetEntries()
         effectView.reset()
+    }
+
+    private func resetSession() {
+        localGiftReservations.removeAll()
+        resetPresentation()
     }
 
     private func configureUI() {
@@ -177,11 +186,11 @@ final class GiftPlayView: UIView {
     }
 
     @objc private func handleApplicationDidEnterBackground() {
-        reset()
+        resetPresentation()
     }
 
     private func activate() {
-        guard !liveID.isEmpty, activatedLiveID != liveID else { return }
+        guard isActive, !liveID.isEmpty, activatedLiveID != liveID else { return }
         deactivate()
 
         let activationID = UUID()
@@ -205,7 +214,7 @@ final class GiftPlayView: UIView {
         cancellables.removeAll()
         giftStore = nil
         activatedLiveID = nil
-        reset()
+        resetSession()
     }
 
     private func receive(_ event: GiftEvent) {
@@ -225,11 +234,11 @@ final class GiftPlayView: UIView {
             senderName: sender.userName,
             senderAvatarURL: sender.avatarURL
         )
-        let visibleCount = consumeLocalGiftReservations(
+        let visibleCounts = consumeLocalGiftReservations(
             comboKey: receivedGift.comboKey,
             count: receivedGift.count
         )
-        if visibleCount > 0 {
+        for visibleCount in visibleCounts {
             show(Self.copy(receivedGift, count: visibleCount))
         }
     }
@@ -249,9 +258,9 @@ final class GiftPlayView: UIView {
         ))
     }
 
-    private func consumeLocalGiftReservations(comboKey: String, count: UInt) -> UInt {
+    private func consumeLocalGiftReservations(comboKey: String, count: UInt) -> [UInt] {
         var unconsumedCount = count
-        var visibleCount = count
+        var visibleCounts: [UInt] = []
         var index = 0
         while index < localGiftReservations.count, unconsumedCount > 0 {
             guard localGiftReservations[index].comboKey == comboKey else {
@@ -259,24 +268,26 @@ final class GiftPlayView: UIView {
                 continue
             }
             let consumed = min(unconsumedCount, localGiftReservations[index].remainingCount)
-            if localGiftReservations[index].isDisplayed {
-                visibleCount -= consumed
+            // Preserve each local send when an aggregated SDK event arrives
+            // before the individual send completions. Already displayed sends
+            // are only reconciled; they must not enqueue another animation.
+            if !localGiftReservations[index].isDisplayed, consumed > 0 {
+                visibleCounts.append(consumed)
             }
             unconsumedCount -= consumed
             localGiftReservations[index].remainingCount -= consumed
             if localGiftReservations[index].remainingCount == 0 {
-                localGiftReservations[index].expiration?.cancel()
                 localGiftReservations.remove(at: index)
             } else {
                 index += 1
             }
         }
-        return visibleCount
+        if unconsumedCount > 0 { visibleCounts.append(unconsumedCount) }
+        return visibleCounts
     }
 
     private func removeLocalGiftReservation(id: UUID) {
         guard let index = localGiftReservations.firstIndex(where: { $0.id == id }) else { return }
-        localGiftReservations[index].expiration?.cancel()
         localGiftReservations.remove(at: index)
     }
 

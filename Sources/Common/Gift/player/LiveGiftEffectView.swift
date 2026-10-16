@@ -1,9 +1,8 @@
 import SnapKit
-import SVGAPlayer
 import TCEffectPlayer
 import UIKit
 
-final class LiveGiftEffectView: UIView, SVGAPlayerDelegate, TCEPAnimViewDelegate {
+final class LiveGiftEffectView: UIView, TCEPAnimViewDelegate {
     private enum ResourceKind {
         case svga
         case mp4
@@ -24,19 +23,33 @@ final class LiveGiftEffectView: UIView, SVGAPlayerDelegate, TCEPAnimViewDelegate
         let kind: ResourceKind
     }
 
+    private final class Preparation {
+        let effectID: UUID
+        var task: URLSessionDownloadTask?
+        var localURL: URL?
+        var asset: AnyObject?
+        var ready = false
+        var failed = false
+
+        init(effectID: UUID) { self.effectID = effectID }
+        deinit { task?.cancel() }
+    }
+
+    private var currentPreparation: Preparation?
+    private var nextPreparation: Preparation?
+
     private let loader = LiveGiftEffectLoader()
     private let animationCanvasView = UIView()
-    private let svgaPlayer = SVGAPlayer()
+    private let svgaPlayer = SVGAPlayerView()
     private let effectPlayerView = TCEffectAnimView(frame: .zero)
     private var queue: [PendingEffect] = []
     private var currentEffect: PendingEffect?
-    private var downloadTask: URLSessionDownloadTask?
-    private var preloadTasks: [String: URLSessionDownloadTask] = [:]
-    private var preloadInFlightURLs = Set<String>()
-    private var preloadWaiters: [String: [(Result<URL, Error>) -> Void]] = [:]
-    private var requestedPreloadURLs = Set<String>()
-    private var parser: SVGAParser?
+    private var currentLocalURL: URL?
     private var timeoutWorkItem: DispatchWorkItem?
+    private var licenseRetryWorkItem: DispatchWorkItem?
+    private var isWaitingForLicense = false
+    private var isSuspended = false
+    private var hasStartedPlayback = false
     private var generation = UUID()
 
     override init(frame: CGRect) {
@@ -51,45 +64,58 @@ final class LiveGiftEffectView: UIView, SVGAPlayerDelegate, TCEPAnimViewDelegate
 
     func enqueue(resourceURL: String) {
         guard let kind = ResourceKind(resourceURL: resourceURL) else { return }
-        queue.append(PendingEffect(resourceURL: resourceURL, kind: kind))
+        let effect = PendingEffect(resourceURL: resourceURL, kind: kind)
+        queue.append(effect)
         playNextIfNeeded()
+        prepareNextIfNeeded()
     }
 
-    func preload(resourceURLs: [String]) {
-        for resourceURL in Set(resourceURLs) {
-            guard ResourceKind(resourceURL: resourceURL) != nil,
-                  requestedPreloadURLs.insert(resourceURL).inserted
-            else { continue }
-
-            preloadInFlightURLs.insert(resourceURL)
-            let task = loader.load(resourceURL: resourceURL) { [weak self] result in
-                guard let self else { return }
-                self.preloadInFlightURLs.remove(resourceURL)
-                self.preloadTasks[resourceURL] = nil
-                let waiters = self.preloadWaiters.removeValue(forKey: resourceURL) ?? []
-                waiters.forEach { $0(result) }
+    func setSuspended(_ suspended: Bool) {
+        guard isSuspended != suspended else { return }
+        isSuspended = suspended
+        if suspended {
+            timeoutWorkItem?.cancel()
+            timeoutWorkItem = nil
+            licenseRetryWorkItem?.cancel()
+            licenseRetryWorkItem = nil
+            guard hasStartedPlayback else { return }
+            switch currentEffect?.kind {
+            case .svga:
+                svgaPlayer.pause()
+            case .mp4:
+                effectPlayerView.pause()
+            case nil:
+                break
             }
-            preloadTasks[resourceURL] = task
+        } else {
+            resumeCurrentEffectIfNeeded()
         }
     }
 
     func reset() {
         generation = UUID()
+        nextPreparation?.task?.cancel()
+        nextPreparation = nil
         queue.removeAll()
         currentEffect = nil
         cleanupPlayback()
         isHidden = true
     }
 
-    func svgaPlayerDidFinishedAnimation(_ player: SVGAPlayer) {
-        finishCurrentEffect()
-    }
-
     func tcePlayerEnd(_ player: ITCEffectPlayer) {
+        guard !isWaitingForLicense, !isSuspended else { return }
         finishCurrentEffect()
     }
 
     func tcePlayerError(_ player: ITCEffectPlayer, error: Error) {
+        if Self.isLicenseError(error), currentLocalURL != nil {
+            isWaitingForLicense = true
+            if !isSuspended {
+                scheduleLicenseRetry()
+            }
+            return
+        }
+        LiveKitLog.error("Gift MP4 playback failed: \(error.localizedDescription)")
         finishCurrentEffect()
     }
 
@@ -102,10 +128,8 @@ final class LiveGiftEffectView: UIView, SVGAPlayerDelegate, TCEPAnimViewDelegate
         animationCanvasView.isUserInteractionEnabled = false
         addSubview(animationCanvasView)
 
-        svgaPlayer.contentMode = .scaleAspectFit
-        svgaPlayer.clearsAfterStop = true
-        svgaPlayer.loops = 1
-        svgaPlayer.delegate = self
+        svgaPlayer.svgaContentMode = .scaleAspectFit
+        svgaPlayer.setLoops(1)
         animationCanvasView.addSubview(svgaPlayer)
 
         effectPlayerView.backgroundColor = .clear
@@ -134,59 +158,100 @@ final class LiveGiftEffectView: UIView, SVGAPlayerDelegate, TCEPAnimViewDelegate
         currentEffect = effect
         let currentGeneration = generation
         isHidden = false
+        if !isSuspended { scheduleTimeout(effectID: effect.id, generation: currentGeneration) }
 
-        let completion: (Result<URL, Error>) -> Void = { [weak self] result in
-            guard let self,
-                  self.generation == currentGeneration,
-                  self.currentEffect?.id == effect.id
-            else { return }
-            self.downloadTask = nil
+        if let prepared = nextPreparation, prepared.effectID == effect.id {
+            currentPreparation = prepared
+            nextPreparation = nil
+            consumePreparation(prepared)
+        } else {
+            let prepared = Preparation(effectID: effect.id)
+            currentPreparation = prepared
+            prepare(effect, into: prepared, generation: currentGeneration)
+        }
+    }
+
+    private func prepareNextIfNeeded() {
+        guard !isSuspended, hasStartedPlayback, nextPreparation == nil, let effect = queue.first else { return }
+        let prepared = Preparation(effectID: effect.id)
+        nextPreparation = prepared
+        prepare(effect, into: prepared, generation: generation)
+    }
+
+    private func prepare(_ effect: PendingEffect, into prepared: Preparation, generation: UUID) {
+        if effect.kind == .svga, currentEffect?.resourceURL == effect.resourceURL,
+           let current = currentPreparation, current !== prepared,
+           current.ready, let asset = current.asset, let localURL = current.localURL {
+            prepared.asset = asset
+            prepared.localURL = localURL
+            prepared.ready = true
+            consumePreparation(prepared)
+            return
+        }
+        prepared.task = loader.load(resourceURL: effect.resourceURL) { [weak self, weak prepared] result in
+            guard let self, let prepared, self.generation == generation else { return }
+            prepared.task = nil
             switch result {
             case .success(let localURL):
-                self.play(effect, localURL: localURL, generation: currentGeneration)
-            case .failure:
-                self.finishCurrentEffect()
+                prepared.localURL = localURL
+                if effect.kind == .svga {
+                    SVGAPlayerView.preload(filePath: localURL.path) { [weak self, weak prepared] asset in
+                        guard let self, let prepared, self.generation == generation else { return }
+                        prepared.asset = asset
+                        prepared.failed = asset == nil
+                        prepared.ready = true
+                        self.consumePreparation(prepared)
+                    }
+                } else {
+                    prepared.ready = true
+                    self.consumePreparation(prepared)
+                }
+            case .failure(let error):
+                LiveKitLog.error("Gift effect download failed: \(error)")
+                prepared.failed = true
+                prepared.ready = true
+                self.consumePreparation(prepared)
             }
         }
-        if preloadInFlightURLs.contains(effect.resourceURL) {
-            preloadWaiters[effect.resourceURL, default: []].append(completion)
-        } else {
-            downloadTask = loader.load(
-                resourceURL: effect.resourceURL,
-                completion: completion
-            )
+    }
+
+    private func consumePreparation(_ prepared: Preparation) {
+        guard currentPreparation === prepared, prepared.ready,
+              let effect = currentEffect, effect.id == prepared.effectID else { return }
+        if prepared.failed {
+            finishCurrentEffect()
+        } else if let localURL = prepared.localURL {
+            play(effect, localURL: localURL, generation: generation)
         }
     }
 
     private func play(_ effect: PendingEffect, localURL: URL, generation: UUID) {
+        currentLocalURL = localURL
+        guard !isSuspended else { return }
+        startCurrentEffect(effect: effect, localURL: localURL, generation: generation)
+    }
+
+    private func startCurrentEffect(effect: PendingEffect, localURL: URL, generation: UUID) {
         scheduleTimeout(effectID: effect.id, generation: generation)
         switch effect.kind {
         case .svga:
             playSVGA(localURL: localURL, effectID: effect.id, generation: generation)
         case .mp4:
+            hasStartedPlayback = true
             playMP4(localURL: localURL)
         }
+        prepareNextIfNeeded()
     }
 
     private func playSVGA(localURL: URL, effectID: UUID, generation: UUID) {
         effectPlayerView.isHidden = true
         svgaPlayer.isHidden = false
-        let parser = SVGAParser()
-        parser.enabledMemoryCache = true
-        self.parser = parser
-        parser.parse(with: localURL) { [weak self] videoItem in
+        hasStartedPlayback = true
+        svgaPlayer.playAnimation(playUrl: localURL.path, prepared: currentPreparation?.asset) { [weak self] code in
             guard let self,
                   self.generation == generation,
-                  self.currentEffect?.id == effectID,
-                  let videoItem
-            else { return }
-            self.svgaPlayer.videoItem = videoItem
-            self.svgaPlayer.startAnimation()
-        } failureBlock: { [weak self] _ in
-            guard let self,
-                  self.generation == generation,
-                  self.currentEffect?.id == effectID
-            else { return }
+                  self.currentEffect?.id == effectID else { return }
+            if code != 0 { LiveKitLog.error("Gift SVGA playback failed: code=\(code)") }
             self.finishCurrentEffect()
         }
     }
@@ -197,6 +262,50 @@ final class LiveGiftEffectView: UIView, SVGAPlayerDelegate, TCEPAnimViewDelegate
         effectPlayerView.startPlay(localURL.path)
     }
 
+    private func resumeCurrentEffectIfNeeded() {
+        guard let effect = currentEffect else { return }
+        scheduleTimeout(effectID: effect.id, generation: generation)
+        prepareNextIfNeeded()
+        guard let localURL = currentLocalURL else { return }
+        if isWaitingForLicense {
+            scheduleLicenseRetry()
+            return
+        }
+        switch effect.kind {
+        case .svga:
+            if hasStartedPlayback {
+                svgaPlayer.resume()
+            } else {
+                startCurrentEffect(effect: effect, localURL: localURL, generation: generation)
+            }
+        case .mp4:
+            if hasStartedPlayback {
+                effectPlayerView.resume()
+            } else {
+                hasStartedPlayback = true
+                playMP4(localURL: localURL)
+            }
+        }
+    }
+
+    private func scheduleLicenseRetry() {
+        licenseRetryWorkItem?.cancel()
+        let currentGeneration = generation
+        let effectID = currentEffect?.id
+        let work = DispatchWorkItem { [weak self] in
+            guard let self,
+                  self.generation == currentGeneration,
+                  self.currentEffect?.id == effectID,
+                  !self.isSuspended,
+                  let localURL = self.currentLocalURL
+            else { return }
+            self.isWaitingForLicense = false
+            self.playMP4(localURL: localURL)
+        }
+        licenseRetryWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1, execute: work)
+    }
+
     private func scheduleTimeout(effectID: UUID, generation: UUID) {
         timeoutWorkItem?.cancel()
         let work = DispatchWorkItem { [weak self] in
@@ -204,6 +313,9 @@ final class LiveGiftEffectView: UIView, SVGAPlayerDelegate, TCEPAnimViewDelegate
                   self.generation == generation,
                   self.currentEffect?.id == effectID
             else { return }
+            if self.isWaitingForLicense {
+                LiveKitLog.error("Gift MP4 playback timed out while waiting for license")
+            }
             self.finishCurrentEffect()
         }
         timeoutWorkItem = work
@@ -219,13 +331,21 @@ final class LiveGiftEffectView: UIView, SVGAPlayerDelegate, TCEPAnimViewDelegate
     }
 
     private func cleanupPlayback() {
-        downloadTask?.cancel()
-        downloadTask = nil
+        currentPreparation?.task?.cancel()
+        currentPreparation = nil
         timeoutWorkItem?.cancel()
         timeoutWorkItem = nil
-        parser = nil
-        svgaPlayer.stopAnimation()
-        svgaPlayer.videoItem = nil
+        licenseRetryWorkItem?.cancel()
+        licenseRetryWorkItem = nil
+        isWaitingForLicense = false
+        hasStartedPlayback = false
+        currentLocalURL = nil
+        svgaPlayer.stop()
         effectPlayerView.stopPlay()
+    }
+
+    private static func isLicenseError(_ error: Error) -> Bool {
+        let error = error as NSError
+        return error.code == -10009 || error.localizedDescription.lowercased().contains("license")
     }
 }

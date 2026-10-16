@@ -143,9 +143,8 @@ final class LivingView: UIView, UIGestureRecognizerDelegate {
         coGuestView.invalidateCameraRequests(allowRestore: allowRestore)
     }
 
-    @discardableResult
-    func invalidateCoGuestMicrophoneRequests(allowRestore: Bool) -> Bool {
-        coGuestView.invalidateMicrophoneRequests(allowRestore: allowRestore)
+    func invalidateCoGuestMicrophoneRequests() {
+        coGuestView.invalidateMicrophoneRequests()
     }
 
     func activateRoomFeatures(liveID: String, hostUserID: String) {
@@ -455,9 +454,6 @@ final class LivingView: UIView, UIGestureRecognizerDelegate {
                 categories: state.categories,
                 isLoading: state.isLoading
             )
-            self.giftPlayView?.preloadEffects(
-                resourceURLs: state.gifts.compactMap { $0.resourceURL?.absoluteString }
-            )
         }
     }
 
@@ -573,7 +569,7 @@ final class LivingView: UIView, UIGestureRecognizerDelegate {
         guard let giftPlayView else { return }
         giftPlayView.setSuspended(!isEnabled)
         if !isEnabled {
-            giftPlayView.reset()
+            giftPlayView.resetEntries()
         }
         giftPlayView.isHidden = !isEnabled
     }

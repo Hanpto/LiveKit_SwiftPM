@@ -1,0 +1,328 @@
+{
+  "object" : {
+    "artifacts" : [
+      {
+        "kind" : {
+          "xcframework" : {
+
+          }
+        },
+        "packageRef" : {
+          "identity" : "atomicxcoreatomic_swiftpm",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/Hanpto/AtomicXCoreAtomic_SwiftPM.git",
+          "name" : "AtomicXCore"
+        },
+        "path" : "/private/tmp/lk52-dst/.build/artifacts/atomicxcoreatomic_swiftpm/AtomicXCoreBinary/AtomicXCore.xcframework",
+        "source" : {
+          "checksum" : "def42d0b450dbb9cdf3a05c18b5685d152d095a4aac18b5b9221c347df345280",
+          "type" : "remote",
+          "url" : "https://sdk-liteav-1252463788.cos.ap-hongkong.myqcloud.com/app/tuikit/download/release/5.2/AtomicXCore_5.2.1.zip"
+        },
+        "targetName" : "AtomicXCoreBinary"
+      },
+      {
+        "kind" : {
+          "xcframework" : {
+
+          }
+        },
+        "packageRef" : {
+          "identity" : "chat_sdk_swiftpm",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/Tencent-RTC/Chat_SDK_SwiftPM.git",
+          "name" : "Chat_SDK_SwiftPM"
+        },
+        "path" : "/private/tmp/lk52-dst/.build/artifacts/chat_sdk_swiftpm/ImSDK_Plus_xcframework/ImSDK_Plus.xcframework",
+        "source" : {
+          "checksum" : "561a3e647b5f3b704d81dfe3dae7d804a743a25646e97b1cb999c7bed1ca39a2",
+          "type" : "remote",
+          "url" : "https://im.sdk.cloud.tencent.cn/download/plus/9.0.7652/ImSDK_Plus_9.0.7652.xcframework.zip"
+        },
+        "targetName" : "ImSDK_Plus_xcframework"
+      },
+      {
+        "kind" : {
+          "xcframework" : {
+
+          }
+        },
+        "packageRef" : {
+          "identity" : "professional_swiftpm",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/Tencent-RTC/Professional_SwiftPM.git",
+          "name" : "Professional_SwiftPM"
+        },
+        "path" : "/private/tmp/lk52-dst/.build/artifacts/professional_swiftpm/TXLiteAVSDK_ReplayKitExt/TXLiteAVSDK_ReplayKitExt.xcframework",
+        "source" : {
+          "checksum" : "9dac3f8cca25b0a1020978a92d004284750f5466e2c61bb093203f78b853c650",
+          "type" : "remote",
+          "url" : "https://liteav.sdk.qcloud.com/download/spm/13.3/professional/13.3.0.20845/TXLiteAVSDK_ReplayKitExt.xcframework.zip"
+        },
+        "targetName" : "TXLiteAVSDK_ReplayKitExt"
+      },
+      {
+        "kind" : {
+          "xcframework" : {
+
+          }
+        },
+        "packageRef" : {
+          "identity" : "professional_swiftpm",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/Tencent-RTC/Professional_SwiftPM.git",
+          "name" : "Professional_SwiftPM"
+        },
+        "path" : "/private/tmp/lk52-dst/.build/artifacts/professional_swiftpm/TXFFmpeg/TXFFmpeg.xcframework",
+        "source" : {
+          "checksum" : "7d0984a4ed30c826868391a0890f5169f0a611c5cf488d960f8949d0e2cff49d",
+          "type" : "remote",
+          "url" : "https://liteav.sdk.qcloud.com/download/spm/13.3/professional/13.3.0.20845/TXFFmpeg.xcframework.zip"
+        },
+        "targetName" : "TXFFmpeg"
+      },
+      {
+        "kind" : {
+          "xcframework" : {
+
+          }
+        },
+        "packageRef" : {
+          "identity" : "professional_swiftpm",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/Tencent-RTC/Professional_SwiftPM.git",
+          "name" : "Professional_SwiftPM"
+        },
+        "path" : "/private/tmp/lk52-dst/.build/artifacts/professional_swiftpm/TXSoundTouch/TXSoundTouch.xcframework",
+        "source" : {
+          "checksum" : "7b0de42045f836fcd68c439899ea86b598a566e54ef62e4ab329a14caeb1da82",
+          "type" : "remote",
+          "url" : "https://liteav.sdk.qcloud.com/download/spm/13.3/professional/13.3.0.20845/TXSoundTouch.xcframework.zip"
+        },
+        "targetName" : "TXSoundTouch"
+      },
+      {
+        "kind" : {
+          "xcframework" : {
+
+          }
+        },
+        "packageRef" : {
+          "identity" : "professional_swiftpm",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/Tencent-RTC/Professional_SwiftPM.git",
+          "name" : "Professional_SwiftPM"
+        },
+        "path" : "/private/tmp/lk52-dst/.build/artifacts/professional_swiftpm/TXLiteAVSDK_Professional/TXLiteAVSDK_Professional.xcframework",
+        "source" : {
+          "checksum" : "df746ad5ee3be65d3330f7a259b635664e931426d113a83489551920dbba3c40",
+          "type" : "remote",
+          "url" : "https://liteav.sdk.qcloud.com/download/spm/13.3/professional/13.3.0.20845/TXLiteAVSDK_Professional.xcframework.zip"
+        },
+        "targetName" : "TXLiteAVSDK_Professional"
+      },
+      {
+        "kind" : {
+          "xcframework" : {
+
+          }
+        },
+        "packageRef" : {
+          "identity" : "tceffectplayer_swiftpm",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/Hanpto/TCEffectPlayer_SwiftPM.git",
+          "name" : "TCEffectPlayer"
+        },
+        "path" : "/private/tmp/lk52-dst/.build/artifacts/tceffectplayer_swiftpm/libtcpagBinary/libtcpag.xcframework",
+        "source" : {
+          "checksum" : "7aff05c452872ae5de9120ba248982fd61e0ce1ebdc3990c7c383090974a3281",
+          "type" : "remote",
+          "url" : "https://sdk-liteav-1252463788.cos.ap-hongkong.myqcloud.com/app/tuikit/download/release/3.3/TCEffectPlayer_3.3.257_libtcpag.xcframework.zip"
+        },
+        "targetName" : "libtcpagBinary"
+      },
+      {
+        "kind" : {
+          "xcframework" : {
+
+          }
+        },
+        "packageRef" : {
+          "identity" : "tceffectplayer_swiftpm",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/Hanpto/TCEffectPlayer_SwiftPM.git",
+          "name" : "TCEffectPlayer"
+        },
+        "path" : "/private/tmp/lk52-dst/.build/artifacts/tceffectplayer_swiftpm/TCEffectPlayerBinary/TCEffectPlayer.xcframework",
+        "source" : {
+          "checksum" : "03a9b85e0bd2398e0d49b04b4b12950a61cd1269dae17ace139f289a71a2cd5d",
+          "type" : "remote",
+          "url" : "https://sdk-liteav-1252463788.cos.ap-hongkong.myqcloud.com/app/tuikit/download/release/3.3/TCEffectPlayer_3.3.257_TCEffectPlayer.xcframework.zip"
+        },
+        "targetName" : "TCEffectPlayerBinary"
+      },
+      {
+        "kind" : {
+          "xcframework" : {
+
+          }
+        },
+        "packageRef" : {
+          "identity" : "tcmediax_swiftpm",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/Hanpto/TCMediaX_SwiftPM.git",
+          "name" : "TCMediaX"
+        },
+        "path" : "/private/tmp/lk52-dst/.build/artifacts/tcmediax_swiftpm/TCMediaXBinary/TCMediaX.xcframework",
+        "source" : {
+          "checksum" : "ad9f3a2703591ea9c235e518f993cfaf2bc1b43fa3886a359903882b6f82ff12",
+          "type" : "remote",
+          "url" : "https://sdk-liteav-1252463788.cos.ap-hongkong.myqcloud.com/app/tuikit/download/release/3.3/TCMediaX_3.3.257.zip"
+        },
+        "targetName" : "TCMediaXBinary"
+      }
+    ],
+    "dependencies" : [
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "atomicxcoreatomic_swiftpm",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/Hanpto/AtomicXCoreAtomic_SwiftPM.git",
+          "name" : "AtomicXCore"
+        },
+        "state" : {
+          "checkoutState" : {
+            "revision" : "e574e2f57e24ea09f91df6b636b30b7e18c5a181",
+            "version" : "5.2.1"
+          },
+          "name" : "sourceControlCheckout"
+        },
+        "subpath" : "AtomicXCoreAtomic_SwiftPM"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "chat_sdk_swiftpm",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/Tencent-RTC/Chat_SDK_SwiftPM.git",
+          "name" : "Chat_SDK_SwiftPM"
+        },
+        "state" : {
+          "checkoutState" : {
+            "revision" : "8d24207d49b9227a5da75d485f0efdfbe382eba9",
+            "version" : "9.0.7652"
+          },
+          "name" : "sourceControlCheckout"
+        },
+        "subpath" : "Chat_SDK_SwiftPM"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "kingfisher",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/onevcat/Kingfisher.git",
+          "name" : "Kingfisher"
+        },
+        "state" : {
+          "checkoutState" : {
+            "revision" : "2ef543ee21d63734e1c004ad6c870255e8716c50",
+            "version" : "7.12.0"
+          },
+          "name" : "sourceControlCheckout"
+        },
+        "subpath" : "Kingfisher"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "professional_swiftpm",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/Tencent-RTC/Professional_SwiftPM.git",
+          "name" : "Professional_SwiftPM"
+        },
+        "state" : {
+          "checkoutState" : {
+            "revision" : "2f64eab272da5479cbb360546a39f03ab5e855e3",
+            "version" : "13.3.20845"
+          },
+          "name" : "sourceControlCheckout"
+        },
+        "subpath" : "Professional_SwiftPM"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "snapkit",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/SnapKit/SnapKit.git",
+          "name" : "SnapKit"
+        },
+        "state" : {
+          "checkoutState" : {
+            "revision" : "2842e6e84e82eb9a8dac0100ca90d9444b0307f4",
+            "version" : "5.7.1"
+          },
+          "name" : "sourceControlCheckout"
+        },
+        "subpath" : "SnapKit"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "svgaplayer_swiftpm",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/Hanpto/SVGAPlayer_SwiftPM.git",
+          "name" : "SVGAPlayer"
+        },
+        "state" : {
+          "checkoutState" : {
+            "revision" : "5ec623b4e0e9f283a82e11d15b2018c898998589",
+            "version" : "2.5.8"
+          },
+          "name" : "sourceControlCheckout"
+        },
+        "subpath" : "SVGAPlayer_SwiftPM"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "tceffectplayer_swiftpm",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/Hanpto/TCEffectPlayer_SwiftPM.git",
+          "name" : "TCEffectPlayer"
+        },
+        "state" : {
+          "checkoutState" : {
+            "revision" : "f2cd502d15ec3678f669ae93fe47fd7a62e43e97",
+            "version" : "3.3.257"
+          },
+          "name" : "sourceControlCheckout"
+        },
+        "subpath" : "TCEffectPlayer_SwiftPM"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "tcmediax_swiftpm",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/Hanpto/TCMediaX_SwiftPM.git",
+          "name" : "TCMediaX"
+        },
+        "state" : {
+          "checkoutState" : {
+            "revision" : "4981089a79c2a8beed5be1bab2a5dc482784e92c",
+            "version" : "3.3.257"
+          },
+          "name" : "sourceControlCheckout"
+        },
+        "subpath" : "TCMediaX_SwiftPM"
+      }
+    ],
+    "prebuilts" : [
+
+    ]
+  },
+  "version" : 7
+}

@@ -39,7 +39,6 @@ final class CoGuestIcon: UIView {
     private var cameraRequestID: UUID?
     private var allowCameraRestore = false
     private var microphoneRequestID: UUID?
-    private var allowMicrophoneRestore = false
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -53,6 +52,10 @@ final class CoGuestIcon: UIView {
 
     private func updateUiState(_ state: CoGuestStatus) {
         guard uiState.value != state else { return }
+        if uiState.value == .coGuesting, state == .idle {
+            invalidateMicrophoneRequests()
+            DeviceStore.shared.closeLocalMicrophone()
+        }
         uiState.send(state)
         onUiStateChanged?(state)
     }
@@ -91,17 +94,13 @@ final class CoGuestIcon: UIView {
         return wasOpening || panelWasOpening
     }
 
-    @discardableResult
-    func invalidateMicrophoneRequests(allowRestore: Bool) -> Bool {
-        let wasOpening = microphoneRequestID != nil
+    func invalidateMicrophoneRequests() {
         microphoneRequestID = nil
-        allowMicrophoneRestore = allowRestore
-        return wasOpening
     }
 
     func deactivate() {
         invalidateCameraRequests(allowRestore: false)
-        invalidateMicrophoneRequests(allowRestore: false)
+        invalidateMicrophoneRequests()
         storeCancellables.removeAll()
         subscribedLiveID = nil
         connected = []
@@ -169,12 +168,10 @@ final class CoGuestIcon: UIView {
                             }
                             if self.microphoneRequestID == requestID {
                                 self.microphoneRequestID = nil
-                                if UIApplication.shared.applicationState != .active ||
-                                    self.liveInfo == nil || self.uiState.value != .coGuesting {
+                                if self.liveInfo == nil || self.uiState.value != .coGuesting {
                                     DeviceStore.shared.closeLocalMicrophone()
                                 }
-                            } else if UIApplication.shared.applicationState != .active ||
-                                (!self.allowMicrophoneRestore && self.microphoneRequestID == nil) {
+                            } else if self.microphoneRequestID == nil {
                                 DeviceStore.shared.closeLocalMicrophone()
                             }
                         }
@@ -222,7 +219,7 @@ final class CoGuestIcon: UIView {
             openCameraAfterAccept.send(true)
             updateUiState(.idle)
         case .onKickedOffSeat:
-            invalidateMicrophoneRequests(allowRestore: false)
+            invalidateMicrophoneRequests()
             LiveToast.show(
                 LiveKitResources.localizedString("tuilivekit.player.coguest.error.kicked_off")
             )

@@ -23,7 +23,6 @@ struct PusherSettingsState: Equatable {
 
 @MainActor
 protocol PusherSettingsActionHandling: AnyObject {
-    func updateVideoQuality(_ quality: PusherVideoQualitySetting)
     func toggleMirror()
     func setCaptureVolume(_ volume: Int)
 }

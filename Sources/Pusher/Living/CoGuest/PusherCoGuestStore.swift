@@ -107,18 +107,21 @@ final class PusherCoGuestStore: PusherCoGuestActionHandling {
         guard !isActive else { return }
         isActive = true
         pendingDesiredLayout = state.layout
+        let sessionID = self.sessionID
 
         sdkStore.state.subscribe()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] sdkState in
-                self?.apply(sdkState)
+                guard let self, self.isActive, self.sessionID == sessionID else { return }
+                self.apply(sdkState)
             }
             .store(in: &cancellables)
 
         seatStore.state.subscribe()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] seatState in
-                self?.apply(seatState)
+                guard let self, self.isActive, self.sessionID == sessionID else { return }
+                self.apply(seatState)
             }
             .store(in: &cancellables)
     }
@@ -130,10 +133,8 @@ final class PusherCoGuestStore: PusherCoGuestActionHandling {
         layoutOperationID = nil
         pendingDesiredLayout = nil
         cancellables.removeAll()
-        state.pendingUserIDs.removeAll()
-        state.isUpdatingLayout = false
+        state = State(layout: state.layout)
         seenApplicantIDs.removeAll()
-        state.hasUnreadApplicant = false
         seatUsers.removeAll()
         notify()
     }

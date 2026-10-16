@@ -24,7 +24,7 @@ public final class PusherView: UIView {
     private let seatStore: LiveSeatStore
     private let coGuestStore: PusherCoGuestStore
     private let coGuestBackgroundView = UIImageView()
-    private let videoView: PusherVideoRenderView
+    private let videoView: PusherVideoView
     private let prepareView = PusherPrepareView()
     private let beautyPanel = BeautyPanel()
     private let livingView: PusherLivingView
@@ -46,7 +46,7 @@ public final class PusherView: UIView {
     private var pushSessionID: UUID?
     private var pusherCancellables = Set<AnyCancellable>()
     private var isPusherAttached = false
-    private var didConfigureSeats = false
+    private var hasConnected = false
     private var interruptionMessage: String?
     private var presentationState = PusherPresentationState()
     private var cancellables = Set<AnyCancellable>()
@@ -71,11 +71,13 @@ public final class PusherView: UIView {
             liveID: liveID,
             seatStore: seatStore
         )
-        videoView = PusherVideoRenderView(liveID: liveID)
+        videoView = PusherVideoView(liveID: liveID)
         livingView = PusherLivingView(liveID: liveID)
         summaryView = PusherSummaryView()
         super.init(frame: .zero)
         updateHostProfile(LoginStore.shared.state.value.loginUserInfo)
+        // Set the fixed HD quality once, before reading settings or starting preview.
+        DeviceStore.shared.updateVideoQuality(.quality720P)
         presentationState.settings = makeSettingsState()
         presentationState.deviceStatus = makeDeviceStatusState(DeviceStore.shared.state.value)
         configureUI()
@@ -87,8 +89,6 @@ public final class PusherView: UIView {
         subscribeUserProfile()
         subscribeAccountEvents()
         subscribeCaptureLifecycle()
-        // Apply the UI default before preview starts; later selections use the same setter.
-        updateVideoQuality(PusherSettingsState().videoQuality)
     }
 
     @available(*, unavailable)
@@ -398,9 +398,12 @@ private extension PusherView {
             }
             self.needsDeviceCleanup = true
             if self.presentationState.settings.isMuted { self.seatStore.muteMicrophone() }
-            DeviceStore.shared.openLocalMicrophone { [weak self] result in
+            let completion: CompletionClosure = { [weak self] result in
                 Task { @MainActor in
                     guard let self else { return }
+                    if !self.didReleaseSession, self.isPaused || UIApplication.shared.applicationState == .background {
+                        self.seatStore.muteMicrophone()
+                    }
                     guard self.validatePreviewOperation(operationID) else {
                         return
                     }
@@ -412,6 +415,15 @@ private extension PusherView {
                         if self.presentationState.settings.isMuted { self.seatStore.muteMicrophone() }
                     }
                 }
+            }
+            if DeviceStore.shared.state.value.microphoneStatus == .on {
+                if self.presentationState.settings.isMuted {
+                    completion(.success(()))
+                } else {
+                    self.seatStore.unmuteMicrophone(completion: completion)
+                }
+            } else {
+                DeviceStore.shared.openLocalMicrophone(completion: completion)
             }
         }
     }
@@ -445,12 +457,16 @@ private extension PusherView {
         isPreviewStarting = false
     }
 
-    private func stopPreview() {
+    private func stopPreview(closeMicrophone: Bool = false) {
         previewOperationID = nil
         if needsDeviceCleanup {
-            needsDeviceCleanup = false
             DeviceStore.shared.closeLocalCamera()
-            DeviceStore.shared.closeLocalMicrophone()
+            if closeMicrophone {
+                needsDeviceCleanup = false
+                DeviceStore.shared.closeLocalMicrophone()
+            } else {
+                seatStore.muteMicrophone()
+            }
         }
         didStartPreview = false
         isPreviewStarting = false
@@ -466,19 +482,6 @@ private extension PusherView {
 extension PusherView: PusherSettingsActionHandling {
     private func refreshSettings() {
         presentationState.settings = makeSettingsState()
-        updateSettings()
-        updateDeviceStatus()
-    }
-
-    func updateVideoQuality(_ quality: PusherVideoQualitySetting) {
-        let sdkQuality: VideoQuality
-        switch quality {
-        case .fhd: sdkQuality = .quality1080P
-        case .hd: sdkQuality = .quality720P
-        case .sd: sdkQuality = .quality540P
-        }
-        DeviceStore.shared.updateVideoQuality(sdkQuality)
-        presentationState.settings.videoQuality = quality
         updateSettings()
         updateDeviceStatus()
     }
@@ -505,7 +508,11 @@ extension PusherView: PusherSettingsActionHandling {
         unmuteOperationID = operationID
         seatStore.unmuteMicrophone { [weak self] result in
             Task { @MainActor in
-                guard let self, self.unmuteOperationID == operationID else { return }
+                guard let self else { return }
+                if !self.didReleaseSession, self.isPaused || UIApplication.shared.applicationState == .background {
+                    self.seatStore.muteMicrophone()
+                }
+                guard self.unmuteOperationID == operationID else { return }
                 self.unmuteOperationID = nil
                 guard self.phase == .living, !self.isEndingLive, !self.didReleaseSession else { return }
                 if case .failure = result {
@@ -533,11 +540,13 @@ extension PusherView: PusherSettingsActionHandling {
 
 private extension PusherView {
     private func startLive(title: String) {
-        guard phase == .prepare, !didReleaseSession else { return }
-        let value = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        liveTitle = value.isEmpty
-            ? LiveKitResources.localizedString("tuilivekit.pusher.default_title")
-            : value
+        guard phase == .prepare, !didReleaseSession, isPusherAttached, pushSessionID == nil else { return }
+        // Keep the editable draft intact if this attempt fails.
+        liveTitle = title
+        guard !liveID.isEmpty, liveID.utf8.count <= 48 else {
+            LiveToast.show(LiveKitResources.localizedString("tuilivekit.pusher.error.start_failed"))
+            return
+        }
         enterLivingPhase()
         requestStartLive()
     }
@@ -573,7 +582,7 @@ private extension PusherView {
         guard pushSessionID == nil, isPusherAttached else { return }
         let sessionID = UUID()
         pushSessionID = sessionID
-        didConfigureSeats = false
+        hasConnected = false
         AtomicPusher.shared.state.subscribe()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] state in
@@ -591,9 +600,10 @@ private extension PusherView {
             .store(in: &pusherCancellables)
         KeyMetrics.reportAtomicMetrics(KeyMetrics.liveIntegrationSuccessful)
         KeyMetrics.setComponent(KeyMetrics.componentLiveStream)
+        let title = liveTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         AtomicPusher.shared.startPush(config: PusherInfo(
             liveID: liveID,
-            liveName: liveTitle,
+            liveName: title.isEmpty ? LiveKitResources.localizedString("tuilivekit.pusher.default_title") : title,
             coverURL: coverURL,
             backgroundURL: "https://liteav.sdk.qcloud.com/app/res/picture/livekit/coGuestBackGroud.png",
             isPublicVisible: true
@@ -601,8 +611,8 @@ private extension PusherView {
     }
 
     private func applyPushState(_ state: PusherState) {
-        if state.networkState == .CONNECTED, !didConfigureSeats {
-            didConfigureSeats = true
+        if state.networkState == .CONNECTED, !hasConnected {
+            hasConnected = true
             let sessionID = pushSessionID
             seatStore.setSeatMode(mode: .apply) { [weak self] result in
                 Task { @MainActor in
@@ -629,12 +639,16 @@ private extension PusherView {
     }
 
     private func handlePushEvent(_ event: PusherEvent) {
+        guard pushSessionID != nil, !didReleaseSession else { return }
         let reasonKey: String
         switch event {
         case let .pusherError(code, message):
             guard phase == .living, code != .OK else { return }
-            let text = message.isEmpty
-                ? LiveKitResources.localizedString("tuilivekit.pusher.error.start_failed") : message
+            LiveKitLog.error("[PusherView] push failed liveID=\(liveID) code=\(code.rawValue) message=\(message)")
+            let text = Self.pushErrorMessage(code: code, message: message)
+            if code == .ERROR_START_PUSH_REQUEST_FAILED, !hasConnected, !isEndingLive {
+                returnToPrepareAfterStartFailure()
+            }
             LiveToast.show(text)
             return
         case let .liveEnded(reason, summary):
@@ -667,6 +681,51 @@ private extension PusherView {
         pushSessionID = nil
         pusherCancellables.removeAll()
         settleLive()
+    }
+
+    private static func pushErrorMessage(code: PusherCode, message: String) -> String {
+        let key: String
+        switch code {
+        case .ERROR_START_PUSH_REQUEST_FAILED, .ERROR_UPDATE_CONFIG_REQUEST_FAILED:
+            // The SDK exposes only a category code; the upstream code is currently
+            // embedded in the SSO message. Match that field, never the message body.
+            let isContentRejected = message.range(
+                of: #"^\s*error_code:\s*100026(?:\s*[,|]|\s*$)"#,
+                options: .regularExpression
+            ) != nil
+            if isContentRejected {
+                key = "content_rejected"
+            } else {
+                key = code == .ERROR_START_PUSH_REQUEST_FAILED ? "start_failed" : "update_failed"
+            }
+        default:
+            key = "operation_failed"
+        }
+        return LiveKitResources.localizedString("tuilivekit.pusher.error.\(key)")
+    }
+
+    private func returnToPrepareAfterStartFailure() {
+        // The SDK already stops the failed attempt. Do not stop/release the
+        // shared pusher or devices again: Prepare reuses the existing preview.
+        pushSessionID = nil
+        pusherCancellables.removeAll()
+        unmuteOperationID = nil
+        phase = .prepare
+        elapsedTimer?.invalidate()
+        elapsedTimer = nil
+        finishPause()
+        liveStartTime = nil
+        liveEndTime = nil
+        elapsedSeconds = 0
+        accumulatedPauseDuration = 0
+        interruptionMessage = nil
+        livingView.resetAfterStartFailure()
+        coGuestStore.deactivate()
+        prepareView.deactivate()
+        render()
+        // This only opens devices if a user pause/background transition stopped
+        // them; an already running (or starting) preview is left untouched.
+        startPreviewIfNeeded()
     }
 
     private func subscribeUserProfile() {
@@ -793,7 +852,7 @@ private extension PusherView {
         // Detach SDK-backed children now so Summary exit cannot unbind a newer session.
         livingView.removeFromSuperview()
         videoView.removeFromSuperview()
-        stopPreview()
+        stopPreview(closeMicrophone: true)
         releasePusher()
         invalidateLifecycle()
         endingSpinner.stopAnimating()

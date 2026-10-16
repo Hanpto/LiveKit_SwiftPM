@@ -58,6 +58,8 @@ final class PusherLivingView: UIView {
 
     private var viewerCount = 0
     private var isPaused = false
+    private var isMusicInBackground = false
+    private var musicLifecycleCancellables = Set<AnyCancellable>()
     private var lastStageTapTime: TimeInterval = 0
     private var audienceWelcomeBottomConstraint: Constraint?
     private var messageListWidth: CGFloat = 0
@@ -70,6 +72,7 @@ final class PusherLivingView: UIView {
     private var audienceState = PusherAudienceStore.State()
     private var renderedAudienceState: PusherAudienceStore.State?
     private var likeCancellables = Set<AnyCancellable>()
+    private var likeSessionID: UUID?
     private var likeFlushTimer: Timer?
     private var likeCount = 0
     private var pendingLikeCount: UInt = 0
@@ -86,6 +89,7 @@ final class PusherLivingView: UIView {
         musicView = PusherMusicView(liveID: liveID)
         liveStatusView = PusherLiveStatusView(liveID: liveID)
         super.init(frame: .zero)
+        giftPlayView.setActive(false)
         configureUI()
         bindAudienceStore()
         renderLikes()
@@ -140,6 +144,7 @@ extension PusherLivingView {
     func updatePause(isPaused: Bool, seconds: Int) {
         self.isPaused = isPaused
         giftPlayView.setSuspended(isPaused)
+        updateMusicSuspension()
         pauseOverlay.bind(isPaused: isPaused, seconds: seconds)
     }
 
@@ -168,11 +173,13 @@ extension PusherLivingView {
     func activateLikes() {
         guard !isLikeActive else { return }
         isLikeActive = true
+        let sessionID = UUID()
+        likeSessionID = sessionID
         updateLikeCount(likeStore.state.value.totalLikeCount)
         likeStore.state.subscribe()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] state in
-                guard let self, self.isLikeActive else { return }
+                guard let self, self.isLikeActive, self.likeSessionID == sessionID else { return }
                 self.updateLikeCount(state.totalLikeCount)
             }
             .store(in: &likeCancellables)
@@ -183,6 +190,7 @@ extension PusherLivingView {
     }
 
     func deactivateLikes(resetState: Bool) {
+        likeSessionID = nil
         if isLikeActive {
             isLikeActive = false
             flushPendingLikes()
@@ -202,6 +210,7 @@ extension PusherLivingView {
     func activateComments() {
         guard !isCommentActive else { return }
         isCommentActive = true
+        giftPlayView.setActive(true)
         commentStore.onStateChanged = { [weak self] state in
             guard let self, self.isCommentActive else { return }
             self.renderComments(state.comments)
@@ -233,6 +242,7 @@ extension PusherLivingView {
 
     func deactivateComments(resetState: Bool) {
         isCommentActive = false
+        giftPlayView.setActive(false)
         commentComposer.reset()
         commentStore.deactivate()
         commentToast?.dismiss()
@@ -248,17 +258,58 @@ extension PusherLivingView {
 
 extension PusherLivingView {
     func activateMusic() {
+        musicLifecycleCancellables.removeAll()
+        isMusicInBackground = UIApplication.shared.applicationState == .background
         musicView.activate()
+        updateMusicSuspension()
+        NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)
+            .sink { [weak self] _ in
+                self?.isMusicInBackground = true
+                self?.updateMusicSuspension()
+            }
+            .store(in: &musicLifecycleCancellables)
+        NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)
+            .sink { [weak self] _ in
+                self?.isMusicInBackground = false
+                self?.updateMusicSuspension()
+            }
+            .store(in: &musicLifecycleCancellables)
     }
 
     func deactivateMusic() {
+        musicLifecycleCancellables.removeAll()
         musicView.deactivate()
+    }
+
+    private func updateMusicSuspension() {
+        musicView.setSuspended(isPaused || isMusicInBackground)
     }
 }
 
 // MARK: - Root Coordination
 
 extension PusherLivingView {
+    func resetAfterStartFailure() {
+        // Discard unsent likes before the normal deactivation can flush them.
+        pendingLikeCount = 0
+        lastLikeSendTime = 0
+        lastStageTapTime = 0
+        deactivateAudience(resetState: true)
+        deactivateLikes(resetState: true)
+        deactivateComments(resetState: true)
+        deactivateMusic()
+        updatePause(isPaused: false, seconds: 0)
+        updateElapsedSeconds(0)
+        settingsView.cancelPendingAction()
+        audienceListView.cancelPendingSelection()
+        let sheets: [BottomSheetView] = [
+            settingsView, musicView, audienceListView, audienceManageView,
+            endConfirmationView, coGuestSettingsView, liveStatusView,
+            coGuestAudienceManageView,
+        ]
+        sheets.forEach { $0.dismiss() }
+    }
+
     func resetAudienceWelcomes() {
         audienceWelcomeView.reset()
     }
@@ -539,8 +590,12 @@ private extension PusherLivingView {
             return
         }
         guard likeFlushTimer == nil else { return }
+        let sessionID = likeSessionID
         let timer = Timer(timeInterval: 6 - elapsed, repeats: false) { [weak self] _ in
-            Task { @MainActor in self?.flushPendingLikes() }
+            Task { @MainActor in
+                guard let self, self.isLikeActive, self.likeSessionID == sessionID else { return }
+                self.flushPendingLikes()
+            }
         }
         likeFlushTimer = timer
         RunLoop.main.add(timer, forMode: .common)

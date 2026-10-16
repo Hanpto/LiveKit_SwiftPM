@@ -12,13 +12,11 @@ final class PusherLivingSettingsView: BottomSheetView {
 
     private enum Page {
         case main
-        case videoQuality
         case audioEffect
 
         var title: String? {
             switch self {
             case .main: return nil
-            case .videoQuality: return LiveKitResources.localizedString("tuilivekit.pusher.video_quality")
             case .audioEffect: return LiveKitResources.localizedString("tuilivekit.pusher.audio_effects")
             }
         }
@@ -26,17 +24,14 @@ final class PusherLivingSettingsView: BottomSheetView {
         var height: CGFloat {
             switch self {
             case .main: return 385
-            case .videoQuality: return 280
             case .audioEffect: return 466
             }
         }
     }
 
     private let mainContentView = UIView()
-    private let videoQualityPicker = VideoQualityPickerView()
     private let audioEffectView = AudioEffectView()
     private let muteItem = PusherSettingsItemView(title: LiveKitResources.localizedString("tuilivekit.pusher.living.mute"), assetName: "livekit_living_setting_mic_on", iconSize: CGSize(width: 44, height: 44))
-    private let qualityItem = PusherSettingsItemView(title: LiveKitResources.localizedString("tuilivekit.pusher.quality.hd"), assetName: "livekit_living_setting_quality", iconSize: CGSize(width: 19, height: 16.5))
     private let mirrorItem = PusherSettingsItemView(title: LiveKitResources.localizedString("tuilivekit.pusher.mirror"), assetName: "livekit_living_setting_mirror", iconSize: CGSize(width: 21, height: 22))
     private var renderedSettings: PusherSettingsState?
     private var page: Page = .main
@@ -59,10 +54,6 @@ final class PusherLivingSettingsView: BottomSheetView {
             ))
             muteItem.setIcon(assetName: settings.isMuted ? "livekit_living_setting_mic_off" : "livekit_living_setting_mic_on")
         }
-        if previous?.videoQuality != settings.videoQuality {
-            qualityItem.setTitle(settings.videoQuality.title)
-            videoQualityPicker.bind(settings.videoQuality)
-        }
         if previous?.isMirrorEnabled != settings.isMirrorEnabled {
             mirrorItem.setIcon(assetName: settings.isMirrorEnabled ? "livekit_settings_mirror_on" : "livekit_settings_mirror_off")
         }
@@ -74,6 +65,10 @@ final class PusherLivingSettingsView: BottomSheetView {
     func show() {
         showPage(.main, animated: false)
         present()
+    }
+
+    func cancelPendingAction() {
+        pendingDismissAction = nil
     }
 
     override func sheetWillPresent() {
@@ -88,23 +83,12 @@ final class PusherLivingSettingsView: BottomSheetView {
         contentView.addSubview(mainContentView)
         configureMainPage()
 
-        videoQualityPicker.onSelect = { [weak self] quality in
-            self?.settingsActionHandler?.updateVideoQuality(quality)
-            self?.dismiss()
-        }
-        contentView.addSubview(videoQualityPicker)
-
         audioEffectView.onSetCaptureVolume = { [weak self] in self?.settingsActionHandler?.setCaptureVolume($0) }
         contentView.addSubview(audioEffectView)
 
         mainContentView.snp.makeConstraints { make in
             make.leading.trailing.top.equalToSuperview()
             make.height.equalTo(Page.main.height)
-        }
-        videoQualityPicker.snp.makeConstraints { make in
-            make.leading.trailing.equalToSuperview().inset(16)
-            make.top.equalToSuperview().offset(67)
-            make.height.equalTo(160)
         }
         audioEffectView.snp.makeConstraints { make in
             make.leading.trailing.equalToSuperview().inset(16)
@@ -120,7 +104,7 @@ final class PusherLivingSettingsView: BottomSheetView {
         let beauty = PusherSettingsItemView(title: LiveKitResources.localizedString("tuilivekit.pusher.beautify"), assetName: "livekit_living_setting_beauty", iconSize: CGSize(width: 18.05, height: 16.3))
         let flip = PusherSettingsItemView(title: LiveKitResources.localizedString("tuilivekit.pusher.flip_camera"), assetName: "livekit_living_setting_flip", iconSize: CGSize(width: 21, height: 18.5))
         let audio = PusherSettingsItemView(title: LiveKitResources.localizedString("tuilivekit.pusher.audio_effects"), assetName: "livekit_living_setting_audio", iconSize: CGSize(width: 18.1, height: 18.6))
-        installSection("tuilivekit.pusher.living.basic_settings", titleTop: 121, rowTop: 148, items: [beauty, qualityItem, mirrorItem, flip, audio])
+        installSection("tuilivekit.pusher.living.basic_settings", titleTop: 121, rowTop: 148, items: [beauty, mirrorItem, flip, audio, UIView()])
         let music = PusherSettingsItemView(title: LiveKitResources.localizedString("tuilivekit.pusher.living.music"), assetName: "livekit_living_setting_music", iconSize: CGSize(width: 14.93, height: 17.63))
         let comment = PusherSettingsItemView(title: LiveKitResources.localizedString("tuilivekit.pusher.living.comment"), assetName: "livekit_living_setting_comment", iconSize: CGSize(width: 19, height: 16))
         installSection("tuilivekit.pusher.living.interaction", titleTop: 239, rowTop: 266, items: [music, comment, UIView(), UIView(), UIView()])
@@ -132,7 +116,6 @@ final class PusherLivingSettingsView: BottomSheetView {
         beauty.addAction(UIAction { [weak self] _ in
             self?.animateDismiss { self?.onShowBeauty?() }
         }, for: .touchUpInside)
-        qualityItem.addAction(UIAction { [weak self] _ in self?.showPage(.videoQuality, animated: true) }, for: .touchUpInside)
         mirrorItem.addAction(UIAction { [weak self] _ in self?.settingsActionHandler?.toggleMirror() }, for: .touchUpInside)
         flip.addAction(UIAction { [weak self] _ in self?.onFlipCamera?() }, for: .touchUpInside)
         audio.addAction(UIAction { [weak self] _ in self?.showPage(.audioEffect, animated: true) }, for: .touchUpInside)
@@ -149,7 +132,6 @@ final class PusherLivingSettingsView: BottomSheetView {
         self.page = page
         sheetTitle = page.title
         mainContentView.isHidden = page != .main
-        videoQualityPicker.isHidden = page != .videoQuality
         audioEffectView.isHidden = page != .audioEffect
         audioEffectView.setActive(page == .audioEffect && !isHidden)
         updateSheetHeight(animated: animated)

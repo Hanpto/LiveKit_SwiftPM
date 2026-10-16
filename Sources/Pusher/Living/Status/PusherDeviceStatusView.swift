@@ -182,9 +182,7 @@ struct PusherDeviceStatusState: Equatable {
 
 extension PusherDeviceStatusState {
     var videoStatus: MediaStatus {
-        let isAbnormal = networkIsDown || (hasAVStatistics && (
-            frameRate < 15 || videoBitrate < Self.minimumVideoBitrate(for: videoQuality)
-        ))
+        let isAbnormal = networkIsDown || (hasAVStatistics && frameRate < 15)
         return Self.mediaStatus(cameraStatus, error: cameraError, streamIsAbnormal: isAbnormal)
     }
 
@@ -208,15 +206,6 @@ extension PusherDeviceStatusState {
         return .normal
     }
 
-    private static func minimumVideoBitrate(for quality: VideoQuality) -> UInt {
-        switch quality {
-        case .quality1080P: return 1_500
-        case .quality720P: return 1_000
-        case .quality540P: return 700
-        case .quality360P: return 400
-        @unknown default: return 700
-        }
-    }
 }
 
 private final class StreamInformationColumnView: UIView {

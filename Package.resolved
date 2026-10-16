@@ -1,12 +1,12 @@
 {
-  "originHash" : "bd0757781c176355a4ded5dbe93f27902185151a0dbbad0ae793bec5a340339f",
+  "originHash" : "3bfd53402e90cac9cfecfa353883506f8ffef624d910090243e31212043382b0",
   "pins" : [
     {
-      "identity" : "atomicxcore52_swiftpm",
+      "identity" : "atomicxcore_swiftpm",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/Hanpto/AtomicXCore52_SwiftPM.git",
+      "location" : "https://github.com/Tencent-RTC/AtomicXCore_SwiftPM.git",
       "state" : {
-        "revision" : "045304047e6dcba5159ccbbc93a1f051426ef0d0",
+        "revision" : "31a394b729b929113b674ba26e6c223d9790e2cd",
         "version" : "5.2.0"
       }
     },
@@ -44,15 +44,6 @@
       "state" : {
         "revision" : "2842e6e84e82eb9a8dac0100ca90d9444b0307f4",
         "version" : "5.7.1"
-      }
-    },
-    {
-      "identity" : "svgaplayer_swiftpm",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/Hanpto/SVGAPlayer_SwiftPM.git",
-      "state" : {
-        "revision" : "5ec623b4e0e9f283a82e11d15b2018c898998589",
-        "version" : "2.5.8"
       }
     },
     {

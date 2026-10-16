@@ -242,7 +242,7 @@
 "tuilivekit.pusher.status.video.normal.detail" = "开播画面流畅";
 "tuilivekit.pusher.status.video.off.detail" = "摄像头未开启或权限未授权";
 "tuilivekit.pusher.status.video.device_error.detail" = "请检查摄像头权限或占用状态";
-"tuilivekit.pusher.status.video.stream_error.detail" = "推流帧率、码率或网络状态异常";
+"tuilivekit.pusher.status.video.stream_error.detail" = "推流帧率或网络状态异常";
 "tuilivekit.pusher.status.audio.normal.title" = "音频状态正常";
 "tuilivekit.pusher.status.audio.off.title" = "音频已关闭";
 "tuilivekit.pusher.status.audio.error.title" = "音频状态异常";
@@ -309,6 +309,9 @@
 "tuilivekit.player.coguest.microphone_unlocked" = "主播已解除禁麦";
 
 "tuilivekit.pusher.error.start_failed" = "开播失败";
+"tuilivekit.pusher.error.content_rejected" = "直播信息未通过审核，请修改后重试";
+"tuilivekit.pusher.error.update_failed" = "直播信息更新失败，请稍后重试";
+"tuilivekit.pusher.error.operation_failed" = "操作失败，请稍后重试";
 
 "tuilivekit.pusher.interruption.ended" = "直播已结束";
 

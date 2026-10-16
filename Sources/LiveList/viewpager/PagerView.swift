@@ -24,6 +24,7 @@ final class PagerView: UIView, UICollectionViewDelegate {
     private var didEmitWillSlideOut = false
     private var needsReloadAfterScroll = false
     private var currentPageDidLeaveScreen = false
+    private var isApplyingDataReload = false
 
     private var swipeBehavior = SwipeBehavior.previewOnly {
         didSet {
@@ -74,7 +75,7 @@ final class PagerView: UIView, UICollectionViewDelegate {
         adapter.setData(merged)
 
         guard adapter.count > 0 else {
-            collectionView.reloadData()
+            performReloadData()
             currentItemID = nil
             needsReloadAfterScroll = false
             return
@@ -85,8 +86,7 @@ final class PagerView: UIView, UICollectionViewDelegate {
             return
         }
 
-        collectionView.reloadData()
-        collectionView.layoutIfNeeded()
+        performReloadData()
         resyncCurrentItemIDIfMissing()
     }
 
@@ -181,7 +181,7 @@ final class PagerView: UIView, UICollectionViewDelegate {
         } ?? LiveInfo()
         initialLiveInfo.liveID = initialLiveID
         adapter.setData([initialLiveInfo])
-        collectionView.reloadData()
+        performReloadData()
     }
 
     private func mergeWithInitialLiveID(_ list: [LiveInfo]) -> [LiveInfo] {
@@ -339,6 +339,7 @@ final class PagerView: UIView, UICollectionViewDelegate {
     ) {
         guard let itemID = (cell as? PageContainerCell)?.itemID else { return }
         if itemID == currentItemID, !currentPageDidLeaveScreen {
+            if isApplyingDataReload, adapter.position(ofItemID: itemID) != nil { return }
             currentPageDidLeaveScreen = true
             pendingSlideInItemIDs.remove(itemID)
             notifyDidSlideOut(itemID)
@@ -375,9 +376,15 @@ final class PagerView: UIView, UICollectionViewDelegate {
     private func flushPendingReloadIfNeeded() {
         guard needsReloadAfterScroll, !isScrolling else { return }
         needsReloadAfterScroll = false
+        performReloadData()
+        resyncCurrentItemIDIfMissing()
+    }
+
+    private func performReloadData() {
+        isApplyingDataReload = true
         collectionView.reloadData()
         collectionView.layoutIfNeeded()
-        resyncCurrentItemIDIfMissing()
+        isApplyingDataReload = false
     }
 
     private func notifyWillSlideIn(_ itemID: String?) {

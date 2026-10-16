@@ -116,3 +116,10 @@ final class PusherSettingsItemView: UIControl {
         titleLabel.isEmphasized = isSelected
     }
 }
+
+enum PusherSettingsSelectionStyle {
+    static let selectedTop: UIColor = LiveTheme.Color.brandBlue.withAlphaComponent(0.42)
+    static let selectedBottom: UIColor = LiveTheme.Color.brandDeepBlue.withAlphaComponent(0.26)
+    static let idleBackground: UIColor = UIColor.white.withAlphaComponent(0.045)
+    static let idleBorder: UIColor = UIColor.white.withAlphaComponent(0.14)
+}

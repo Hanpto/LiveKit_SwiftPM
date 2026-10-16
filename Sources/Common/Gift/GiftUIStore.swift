@@ -152,9 +152,11 @@ final class GiftUIStore {
         }
         store.sendGift(giftID: id, count: UInt(max(1, count))) { result in
             DispatchQueue.main.async {
-                if case .success = result {
+                switch result {
+                case .success:
                     completion?(true)
-                } else {
+                case .failure(let error):
+                    LiveKitLog.error("Gift send failed: gift=\(id), error=\(error)")
                     completion?(false)
                 }
             }

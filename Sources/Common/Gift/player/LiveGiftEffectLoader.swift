@@ -54,6 +54,7 @@ final class LiveGiftEffectLoader {
             }
             DispatchQueue.main.async { completion(result) }
         }
+        task.priority = URLSessionTask.highPriority
         task.resume()
         return task
     }

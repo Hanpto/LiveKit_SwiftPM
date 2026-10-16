@@ -1,0 +1,30 @@
+
+#ifndef PAG_pch
+#define PAG_pch
+
+#define PAG TXCPAG
+#define PAGComposition TXCPAGComposition
+#define PAGDiskCache TXCPAGDiskCache
+#define PAGFile TXCPAGFile
+#define PAGFont TXCPAGFont
+#define PAGImage TXCPAGImage
+#define PAGImageLayer TXCPAGImageLayer
+#define PAGLayer TXCPAGLayer
+#define PAGMarker TXCPAGMarker
+#define PAGPlayer TXCPAGPlayer
+#define PAGScaleMode TXCPAGScaleMode
+#define PAGShapeLayer TXCPAGShapeLayer
+#define PAGSolidLayer TXCPAGSolidLayer
+#define PAGText TXCPAGText
+#define PAGTextLayer TXCPAGTextLayer
+#define PAGTimeStretchMode TXCPAGTimeStretchMode
+#define PAGVideoDecoder TXCPAGVideoDecoder
+#define PAGVideoRange TXCPAGVideoRange
+#define PAGDecoder TXCPAGDecoder
+#define PAGImageView TXCPAGImageView
+#define PAGImageViewListener TXCPAGImageViewListener
+#define PAGSurface TXCPAGSurface
+#define PAGView TXCPAGView
+#define PAGViewListener TXCPAGViewListener
+
+#endif /* PAG_pch */

@@ -1,0 +1,14 @@
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = true
+	ignorecase = true
+	precomposeunicode = true
+	symlinks = true
+	fsmonitor = false
+	longpaths = true
+[remote "origin"]
+	url = https://github.com/Hanpto/TCMediaX_SwiftPM.git
+	tagOpt = --no-tags
+	fetch = +refs/*:refs/*
+	mirror = true

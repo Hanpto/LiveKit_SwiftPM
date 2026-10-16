@@ -12,7 +12,7 @@ final class PlayerViewImpl: UIView {
     var onCloseClicked: (() -> Void)?
     var onJoinLiveClicked: (() -> Void)?
 
-    private let videoView = VideoView()
+    private let videoView = PlayerVideoView()
     private let overlayView = LivingView()
     private let previewView = PreviewView()
     private let summaryView = SummaryView()
@@ -38,7 +38,7 @@ final class PlayerViewImpl: UIView {
     private var playingLiveID: String?
     private var backgroundCamera: (liveID: String, isFront: Bool)?
     private var cameraRestoreID: UUID?
-    private var backgroundMicrophone: (liveID: String, wasMuted: Bool)?
+    private var backgroundMicrophone: String?
     private var microphoneRestoreID: UUID?
     private var pendingJoinCompletions: [(Result<LiveInfo, Error>) -> Void] = []
     private var pendingLeaveCompletions: [(Result<Void, Error>) -> Void] = []
@@ -73,7 +73,7 @@ final class PlayerViewImpl: UIView {
             cameraRestoreID = nil
             clearBackgroundMicrophone()
             overlayView.invalidateCoGuestCameraRequests(allowRestore: false)
-            overlayView.invalidateCoGuestMicrophoneRequests(allowRestore: false)
+            overlayView.invalidateCoGuestMicrophoneRequests()
         } else {
             restoreCaptureIfNeeded()
             restoreMicrophoneIfNeeded()
@@ -402,13 +402,10 @@ final class PlayerViewImpl: UIView {
         if (onSeat && backgroundCamera != nil) || wasOpening {
             DeviceStore.shared.closeLocalCamera()
         }
-        let wasOpeningMic = overlayView.invalidateCoGuestMicrophoneRequests(allowRestore: onSeat)
-        if onSeat, backgroundMicrophone == nil, state.microphoneStatus == .on || wasOpeningMic {
-            backgroundMicrophone = (liveID, seat?.microphoneStatus != .on)
-        }
         microphoneRestoreID = nil
-        if (onSeat && backgroundMicrophone?.liveID == liveID) || wasOpeningMic {
-            DeviceStore.shared.closeLocalMicrophone()
+        if seat?.microphoneStatus == .on {
+            if backgroundMicrophone == nil { backgroundMicrophone = liveID }
+            LiveSeatStore.create(liveID: liveID).muteMicrophone()
         }
     }
 
@@ -453,9 +450,7 @@ final class PlayerViewImpl: UIView {
     }
 
     private func restoreMicrophoneIfNeeded() {
-        guard let microphone = backgroundMicrophone else { return }
-        let liveID = microphone.liveID
-        guard microphoneRestoreID == nil, window != nil,
+        guard let liveID = backgroundMicrophone, microphoneRestoreID == nil, window != nil,
               UIApplication.shared.applicationState == .active, isJoinedChannel,
               statusPublisher.value == .coGuest, liveInfo?.liveID == liveID,
               let userID = LoginStore.shared.state.value.loginUserInfo?.userID, !userID.isEmpty,
@@ -467,20 +462,12 @@ final class PlayerViewImpl: UIView {
         }
         let operationID = UUID()
         microphoneRestoreID = operationID
-        if microphone.wasMuted { LiveSeatStore.create(liveID: liveID).muteMicrophone() }
-        DeviceStore.shared.openLocalMicrophone { [weak self] result in
+        LiveSeatStore.create(liveID: liveID).unmuteMicrophone { [weak self] result in
             Task { @MainActor in
-                guard let self else {
-                    if UIApplication.shared.applicationState != .active {
-                        DeviceStore.shared.closeLocalMicrophone()
-                    }
-                    return
-                }
+                guard let self else { return }
                 guard self.microphoneRestoreID == operationID else {
-                    if UIApplication.shared.applicationState != .active ||
-                        (self.liveInfo?.liveID == liveID &&
-                         (!self.isJoinedChannel || self.statusPublisher.value != .coGuest)) {
-                        DeviceStore.shared.closeLocalMicrophone()
+                    if self.backgroundMicrophone == liveID, UIApplication.shared.applicationState != .active {
+                        LiveSeatStore.create(liveID: liveID).muteMicrophone()
                     }
                     return
                 }
@@ -488,16 +475,18 @@ final class PlayerViewImpl: UIView {
                 let currentSeat = CoGuestStore.create(liveID: liveID).state.value.connected.first {
                     $0.userID == userID
                 }
-                guard case .success = result, self.backgroundMicrophone?.liveID == liveID,
+                guard case .success = result, self.backgroundMicrophone == liveID,
                       UIApplication.shared.applicationState == .active, self.window != nil,
                       self.isJoinedChannel, self.statusPublisher.value == .coGuest,
                       self.liveInfo?.liveID == liveID, currentSeat?.allowOpenMicrophone == true else {
                     self.clearBackgroundMicrophone()
-                    DeviceStore.shared.closeLocalMicrophone()
+                    if currentSeat != nil, self.liveInfo?.liveID == liveID,
+                       UIApplication.shared.applicationState != .active {
+                        LiveSeatStore.create(liveID: liveID).muteMicrophone()
+                    }
                     return
                 }
                 self.backgroundMicrophone = nil
-                if microphone.wasMuted { LiveSeatStore.create(liveID: liveID).muteMicrophone() }
             }
         }
     }

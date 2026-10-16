@@ -29,6 +29,10 @@ final class PusherAudienceListView: BottomSheetView {
         present()
     }
 
+    func cancelPendingSelection() {
+        selectedAudience = nil
+    }
+
     override func sheetDidDismiss() {
         guard let selectedAudience else { return }
         self.selectedAudience = nil
